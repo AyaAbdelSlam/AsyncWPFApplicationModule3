@@ -26,7 +26,7 @@ namespace StockAnalyzer.Windows
 
         CancellationTokenSource cancellationTokenSource = null;
 
-        private async void Search_Click(object sender, RoutedEventArgs e)
+        private void Search_Click(object sender, RoutedEventArgs e)
         {
             // Excuted from UI Thread
             #region Before loading stock data
@@ -39,9 +39,18 @@ namespace StockAnalyzer.Windows
             #endregion
 
             // different thread from UI Thread
-            await Task.Run(() =>
+            var loadAllLines =  Task.Run(() =>
             {
                 var lines = File.ReadAllLines(@"StockPrices_Small.csv");
+                return lines;
+            });
+
+            //Continue with differes from async-await its executing in different thread
+            //also it says once the daata is availabe begin processing it 
+
+            var processTask = loadAllLines.ContinueWith(t =>
+            {
+                var lines = t.Result;
                 var data = new List<StockPrice>();
 
                 foreach (var line in lines.Skip(1))
@@ -66,15 +75,21 @@ namespace StockAnalyzer.Windows
 
                 });
             });
-            
 
-            // Excuted from UI Thread
+             processTask.ContinueWith(_ =>
+             {
+                 Dispatcher.Invoke(() =>
+                 {
+                    #region After stock data is loaded
+                    StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
+                     StockProgress.Visibility = Visibility.Hidden;
+                     Search.Content = "Search";
+                    #endregion
 
-            #region After stock data is loaded
-            StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
-            StockProgress.Visibility = Visibility.Hidden;
-            Search.Content = "Search";
-            #endregion
+
+                });
+             });
+
 
             cancellationTokenSource = null;
         }
