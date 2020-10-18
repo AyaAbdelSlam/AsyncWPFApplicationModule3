@@ -48,6 +48,16 @@ namespace StockAnalyzer.Windows
             //Continue with differes from async-await its executing in different thread
             //also it says once the daata is availabe begin processing it 
 
+            loadAllLines.ContinueWith(t =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    StocksStatus.Text = $"Failed while loading the File with, {t.Exception.Message}";
+
+
+                });
+            },TaskContinuationOptions.OnlyOnFaulted);
+
             var processTask = loadAllLines.ContinueWith(t =>
             {
                 var lines = t.Result;
@@ -74,7 +84,7 @@ namespace StockAnalyzer.Windows
                     Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
 
                 });
-            });
+            },TaskContinuationOptions.OnlyOnRanToCompletion);
 
              processTask.ContinueWith(_ =>
              {
