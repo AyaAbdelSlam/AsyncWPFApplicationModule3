@@ -38,13 +38,16 @@ namespace StockAnalyzer.Windows
             Search.Content = "Cancel";
             #endregion
 
-            // different thread from UI Thread
-            var loadAllLines =  Task.Run(() =>
+            if (cancellationTokenSource != null)
             {
-                var lines = File.ReadAllLines(@"StockPrices_Small.csv");
-                return lines;
-            });
+                cancellationTokenSource.Cancel();
+                cancellationTokenSource = null;
+                return;
+            }
 
+            cancellationTokenSource = new CancellationTokenSource();
+            // different thread from UI Thread
+            var loadAllLines = SearchForStocks(cancellationTokenSource.Token);
             //Continue with differes from async-await its executing in different thread
             //also it says once the daata is availabe begin processing it 
 
