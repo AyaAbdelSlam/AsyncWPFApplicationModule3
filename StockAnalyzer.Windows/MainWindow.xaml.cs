@@ -26,7 +26,7 @@ namespace StockAnalyzer.Windows
 
         CancellationTokenSource cancellationTokenSource = null;
 
-        private void Search_Click(object sender, RoutedEventArgs e)
+        private async void Search_Click(object sender, RoutedEventArgs e)
         {
             // Excuted from UI Thread
             #region Before loading stock data
@@ -55,7 +55,7 @@ namespace StockAnalyzer.Windows
             //Continue with differes from async-await its executing in different thread
             //also it says once the daata is availabe begin processing it 
 
-            #region Commented Code
+            #region Commented Cancellation Code
             //loadAllLines.ContinueWith(t =>
             //{
             //    Dispatcher.Invoke(() =>
@@ -112,7 +112,27 @@ namespace StockAnalyzer.Windows
 
             try
             {
-                var stockService = new StockService().GetStockPricesFor(Ticker.Text, cancellationTokenSource.Token);
+                var tickers = Ticker.Text.Split(',', ' ');
+                //var stockService = await ;
+
+                var stockService = new StockService();
+                var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
+                foreach(var ticker in tickers)
+                {
+                    tickerLoadingTasks.Add(stockService.GetStockPricesFor(ticker, cancellationTokenSource.Token));
+                }
+
+                var timeoutTask = Task.Delay(2000);
+                var allStockLoadingTask = Task.WhenAll(tickerLoadingTasks);
+                var completedTask = Task.WhenAny(allStockLoadingTask, timeoutTask);
+
+                if(completedTask == timeoutTask)
+                {
+                    cancellationTokenSource.Cancel();
+                    cancellationTokenSource = null;
+                    throw new Exception("timeout");
+                }
+                Stocks.ItemsSource = allStockLoadingTask.Result.SelectMany(stocks => stocks);
             }
             catch (Exception ex)
             {
