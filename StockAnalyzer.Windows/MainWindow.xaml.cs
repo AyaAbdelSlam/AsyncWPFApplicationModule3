@@ -38,18 +38,7 @@ namespace StockAnalyzer.Windows
             Search.Content = "Cancel";
             #endregion
 
-            if (cancellationTokenSource != null)
-            {
-                cancellationTokenSource.Cancel();
-                cancellationTokenSource = null;
-                return;
-            }
 
-            cancellationTokenSource = new CancellationTokenSource();
-            cancellationTokenSource.Token.Register(() =>
-            {
-                Notes.Text += "Cancellation requested" + Environment.NewLine;
-            });
             // different thread from UI Thread
             //var loadAllLines = SearchForStocks(cancellationTokenSource.Token);
             //Continue with differes from async-await its executing in different thread
@@ -110,35 +99,57 @@ namespace StockAnalyzer.Windows
 
             #endregion
 
+            #region Cancellation
+            if (cancellationTokenSource != null)
+            {
+                cancellationTokenSource.Cancel();
+                cancellationTokenSource = null;
+                return;
+            }
+
+            cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.Token.Register(() =>
+            {
+                Notes.Text += "Cancellation requested" + Environment.NewLine;
+            });
+            #endregion
+
             try
             {
                 var tickers = Ticker.Text.Split(',', ' ');
-                //var stockService = await ;
 
-                var stockService = new MockStockService();
+                var service = new StockService();
+
                 var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
-                foreach(var ticker in tickers)
+                foreach (var ticker in tickers)
                 {
-                    tickerLoadingTasks.Add(stockService.GetStockPricesFor(ticker, cancellationTokenSource.Token));
-                }
+                    var loadTask = service.GetStockPricesFor(ticker, cancellationTokenSource.Token);
 
-                var timeoutTask = Task.Delay(2000);
-                var allStockLoadingTask = Task.WhenAll(tickerLoadingTasks);
-                var completedTask = Task.WhenAny(allStockLoadingTask, timeoutTask);
-
-                if(completedTask == timeoutTask)
-                {
-                    cancellationTokenSource.Cancel();
-                    cancellationTokenSource = null;
-                    throw new Exception("timeout");
+                    tickerLoadingTasks.Add(loadTask);
                 }
-                Stocks.ItemsSource = allStockLoadingTask.Result.SelectMany(stocks => stocks);
+                //var timeoutTask = Task.Delay(30000);
+
+                //var allStocksLoadingTask = Task.WhenAll(tickerLoadingTasks);
+
+                //var completedTask = await Task.WhenAny(timeoutTask, allStocksLoadingTask);
+
+                //if (completedTask == timeoutTask)
+                //{
+                //    cancellationTokenSource.Cancel();
+                //    cancellationTokenSource = null;
+                //    throw new Exception("Timeout!");
+                //}
+
+                Stocks.ItemsSource = allStocksLoadingTask.Result.SelectMany(stocks => stocks);
             }
             catch (Exception ex)
             {
                 Notes.Text += ex.Message + Environment.NewLine;
             }
-            cancellationTokenSource = null;
+            finally
+            {
+                cancellationTokenSource = null;
+            }
         }
 
         private Task<List<string>> SearchForStocks(CancellationToken cancellationToken)
