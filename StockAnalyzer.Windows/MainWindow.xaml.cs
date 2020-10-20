@@ -115,7 +115,7 @@ namespace StockAnalyzer.Windows
                 var tickers = Ticker.Text.Split(',', ' ');
                 //var stockService = await ;
 
-                var stockService = new StockService();
+                var stockService = new MockStockService();
                 var tickerLoadingTasks = new List<Task<IEnumerable<StockPrice>>>();
                 foreach(var ticker in tickers)
                 {

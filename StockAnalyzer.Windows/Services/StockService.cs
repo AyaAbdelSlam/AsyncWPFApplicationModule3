@@ -10,7 +10,7 @@ using StockAnalyzer.Core.Domain;
 
 namespace StockAnalyzer.Windows.Services
 {
-    public class StockService
+    public class StockService:IStockService
     {
         public async Task<IEnumerable<StockPrice>> GetStockPricesFor(string ticker, CancellationToken cancellationToken)
         {
