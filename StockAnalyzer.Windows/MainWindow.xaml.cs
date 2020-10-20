@@ -46,64 +46,78 @@ namespace StockAnalyzer.Windows
             }
 
             cancellationTokenSource = new CancellationTokenSource();
+            cancellationTokenSource.Token.Register(() =>
+            {
+                Notes.Text += "Cancellation requested" + Environment.NewLine;
+            });
             // different thread from UI Thread
-            var loadAllLines = SearchForStocks(cancellationTokenSource.Token);
+            //var loadAllLines = SearchForStocks(cancellationTokenSource.Token);
             //Continue with differes from async-await its executing in different thread
             //also it says once the daata is availabe begin processing it 
 
-            loadAllLines.ContinueWith(t =>
+            #region Commented Code
+            //loadAllLines.ContinueWith(t =>
+            //{
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        StocksStatus.Text = $"Failed while loading the File with, {t.Exception.Message}";
+
+
+            //    });
+            //},TaskContinuationOptions.OnlyOnFaulted);
+
+            //var processTask = loadAllLines.ContinueWith(t =>
+            //{
+            //    var lines = t.Result;
+            //    var data = new List<StockPrice>();
+
+            //    foreach (var line in lines.Skip(1))
+            //    {
+            //        var segments = line.Split(',');
+
+            //        for (var i = 0; i < segments.Length; i++) segments[i] = segments[i].Trim('\'', '"');
+            //        var price = new StockPrice
+            //        {
+            //            Ticker = segments[0],
+            //            TradeDate = DateTime.ParseExact(segments[1], "M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture),
+            //            Volume = Convert.ToInt32(segments[6], CultureInfo.InvariantCulture),
+            //            Change = Convert.ToDecimal(segments[7], CultureInfo.InvariantCulture),
+            //            ChangePercent = Convert.ToDecimal(segments[8], CultureInfo.InvariantCulture),
+            //        };
+            //        data.Add(price);
+            //    }
+
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
+
+            //    });
+            //},TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
+
+            // processTask.ContinueWith(_ =>
+            // {
+            //     Dispatcher.Invoke(() =>
+            //     {
+            //        #region After stock data is loaded
+            //        StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
+            //         StockProgress.Visibility = Visibility.Hidden;
+            //         Search.Content = "Search";
+            //        #endregion
+
+
+            //    });
+            // });
+
+            #endregion
+
+            try
             {
-                Dispatcher.Invoke(() =>
-                {
-                    StocksStatus.Text = $"Failed while loading the File with, {t.Exception.Message}";
-
-
-                });
-            },TaskContinuationOptions.OnlyOnFaulted);
-
-            var processTask = loadAllLines.ContinueWith(t =>
+                var stockService = new StockService().GetStockPricesFor(Ticker.Text, cancellationTokenSource.Token);
+            }
+            catch (Exception ex)
             {
-                var lines = t.Result;
-                var data = new List<StockPrice>();
-
-                foreach (var line in lines.Skip(1))
-                {
-                    var segments = line.Split(',');
-
-                    for (var i = 0; i < segments.Length; i++) segments[i] = segments[i].Trim('\'', '"');
-                    var price = new StockPrice
-                    {
-                        Ticker = segments[0],
-                        TradeDate = DateTime.ParseExact(segments[1], "M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture),
-                        Volume = Convert.ToInt32(segments[6], CultureInfo.InvariantCulture),
-                        Change = Convert.ToDecimal(segments[7], CultureInfo.InvariantCulture),
-                        ChangePercent = Convert.ToDecimal(segments[8], CultureInfo.InvariantCulture),
-                    };
-                    data.Add(price);
-                }
-
-                Dispatcher.Invoke(() =>
-                {
-                    Stocks.ItemsSource = data.Where(price => price.Ticker == Ticker.Text);
-
-                });
-            },TaskContinuationOptions.OnlyOnRanToCompletion);
-
-             processTask.ContinueWith(_ =>
-             {
-                 Dispatcher.Invoke(() =>
-                 {
-                    #region After stock data is loaded
-                    StocksStatus.Text = $"Loaded stocks for {Ticker.Text} in {watch.ElapsedMilliseconds}ms";
-                     StockProgress.Visibility = Visibility.Hidden;
-                     Search.Content = "Search";
-                    #endregion
-
-
-                });
-             });
-
-
+                Notes.Text += ex.Message + Environment.NewLine;
+            }
             cancellationTokenSource = null;
         }
 
